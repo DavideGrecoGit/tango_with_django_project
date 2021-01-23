@@ -6,22 +6,23 @@
     <title>Rango</title>
   </head>
   <body>
-    <h1>Rango says...</h1>
+    <a href="/rango/">Back</a><br />
+    <h1>Rango's about page</h1>
     <div>
-      hey there partner! <br />
+      About rango.... <br />
       <strong>{{ boldmessage }}</strong><br />
     </div>
     <div>
-      <a href="/rango/about/">About</a><br />
       <img class="images" src="{% static 'images/mascot.jpg' %}" alt="Picture of Rango" />
+      <img class="images" src="{{ MEDIA_URL }}cat.jpg" alt="Picture of a cat" />
       <!-- New line -->
     </div>
   </body>
 </html>
 
 <style>
-  .images{
-      width: 150px;
-      height: 150px;
-  }
+    .images{
+        width: 150px;
+        height: 150px;
+    }
 </style>
