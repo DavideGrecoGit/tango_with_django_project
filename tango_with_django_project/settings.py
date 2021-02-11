@@ -54,6 +54,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+#Cookies
+SESSION_COOKIE_AGE = 1209600 #2 weeks
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False #browser-length cookies
+
 ROOT_URLCONF = 'tango_with_django_project.urls'
 
 TEMPLATES = [

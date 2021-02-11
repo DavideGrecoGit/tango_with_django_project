@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from datetime import datetime
 from rango.models import Category, Page
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponse
@@ -7,24 +8,49 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 
+# A helper method
+
+
+def get_server_side_cookie(request, cookie, default_val=None):
+    val = request.session.get(cookie)
+    if not val:
+        val = default_val
+    return val
+
+# Updated the function definition
+
+
+def visitor_cookie_handler(request):
+    visits = int(get_server_side_cookie(request, 'visits', '1'))
+    last_visit_cookie = get_server_side_cookie(request,'last_visit', str(datetime.now()))
+    last_visit_time = datetime.strptime(last_visit_cookie[:-7], '%Y-%m-%d %H:%M:%S')
+
+    # If it's been more than a day since the last visit...
+    if (datetime.now() - last_visit_time).days > 0:
+        visits = visits + 1
+        # Update the last visit cookie now that we have updated the count
+        request.session['last_visit'] = str(datetime.now())
+    else:
+        # Set the last visit cookie
+        request.session['last_visit'] = last_visit_cookie
+
+    # Update/set the visits cookie
+    request.session['visits'] = visits
+
+
 def index(request):
-    # Query the database for a list of ALL categories currently stored.
-    # Order the categories by the number of likes in descending order.
-    # Retrieve the top 5 only -- or all if less than 5.
-    # Place the list in our context_dict dictionary (with our boldmessage!)
-    # that will be passed to the template engine.
     category_list = Category.objects.order_by('-likes')[:5]
-
-    #Retrieve the top 5 most viewed pages
     page_list = Page.objects.order_by('-views')[:5]
-
+    
     context_dict = {}
     context_dict['boldmessage'] = 'Crunchy, creamy, cookie, candy, cupcake!'
     context_dict['categories'] = category_list
     context_dict['pages'] = page_list
 
-    # Return a rendered response to send to the client.
-    return render(request, 'rango/index.html', context=context_dict)
+    visitor_cookie_handler(request)
+
+    response = render(request, 'rango/index.html', context=context_dict)
+    return response
 
 
 def show_category(request, category_name_slug):
@@ -32,7 +58,7 @@ def show_category(request, category_name_slug):
     # Create a context dictionary which we can pass
     # to the template rendering engine.
     context_dict = {}
-    
+
     try:
         # Can we find a category name slug with the given name?
         # If we can't, the .get() method raises a DoesNotExist exception.
@@ -58,6 +84,7 @@ def show_category(request, category_name_slug):
 
     return render(request, 'rango/category.html', context=context_dict)
 
+
 @login_required
 def add_category(request):
     form = CategoryForm()
@@ -79,6 +106,7 @@ def add_category(request):
     # Render the form with error messages (if any).
     return render(request, 'rango/add_category.html', {'form': form})
 
+
 @login_required
 def add_page(request, category_name_slug):
     try:
@@ -91,7 +119,7 @@ def add_page(request, category_name_slug):
         return redirect(reverse('rango:index'))
 
     form = PageForm()
-    
+
     if request.method == 'POST':
         form = PageForm(request.POST)
         if form.is_valid():
@@ -100,16 +128,20 @@ def add_page(request, category_name_slug):
                 page.category = category
                 page.views = 0
                 page.save()
-            
-                return redirect(reverse('rango:show_category', kwargs={'category_name_slug':category_name_slug}))
+
+                return redirect(reverse('rango:show_category', kwargs={'category_name_slug': category_name_slug}))
     else:
         print(form.errors)
 
     context_dict = {'form': form, 'category': category}
     return render(request, 'rango/add_page.html', context=context_dict)
 
+
 def about(request):
-    return render(request, 'rango/about.html', {})
+    context_dict = {}
+    context_dict['visits'] = request.session['visits']
+    return render(request, 'rango/about.html', context_dict)
+
 
 def register(request):
     # A boolean value for telling the template
@@ -147,7 +179,7 @@ def register(request):
             # put it in the UserProfile model.
             if 'picture' in request.FILES:
                 profile.picture = request.FILES['picture']
-            
+
             # Now we save the UserProfile model instance.
             profile.save()
 
@@ -165,7 +197,8 @@ def register(request):
         profile_form = UserProfileForm()
 
     # Render the template depending on the context.
-    return render(request, 'rango/register.html', context = {'user_form': user_form, 'profile_form': profile_form, 'registered': registered})
+    return render(request, 'rango/register.html', context={'user_form': user_form, 'profile_form': profile_form, 'registered': registered})
+
 
 def user_login(request):
     # If the request is a HTTP POST, try to pull out the relevant information.
@@ -208,12 +241,15 @@ def user_login(request):
         # blank dictionary object...
         return render(request, 'rango/login.html')
 
+
 @login_required
 def restricted(request):
     return render(request, 'rango/restricted.html')
 
 # Use the login_required() decorator to ensure only those logged in can
 # access the view.
+
+
 @login_required
 def user_logout(request):
     # Since we know the user is logged in, we can now just log them out.
